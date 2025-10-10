@@ -29,7 +29,9 @@ apiClient.interceptors.request.use((config) => {
   const publicEndpoints = [
     "/api/v1/auth/login",
     "/api/v1/auth/register",
-    "/medical_studies/public-search/"
+    "/medical_studies/public-search/",
+    "/api/v1/auth/forgot-password",
+    "/api/v1/auth/reset-password"
   ]
 
   // Verificación más robusta que maneja slashes finales
@@ -165,6 +167,34 @@ export const login = async (email: string, password: string, remember = false): 
     throw error
   }
 }
+
+export const requestPasswordReset = async (email: string): Promise<{ message: string }> => {
+  try {
+    const response = await apiClient.post<{ message: string }>("/api/v1/auth/forgot-password", { email })
+    return response.data
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.detail || "Error al solicitar recuperación de contraseña")
+    }
+    throw error
+  }
+}
+
+export const resetPassword = async (token: string, newPassword: string): Promise<{ message: string }> => {
+  try {
+    const response = await apiClient.post<{ message: string }>("/api/v1/auth/reset-password", {
+      token,
+      new_password: newPassword,
+    })
+    return response.data
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data?.detail || "Error al restablecer la contraseña")
+    }
+    throw error
+  }
+}
+
 
 // Función de logout
 export const logout = () => {
