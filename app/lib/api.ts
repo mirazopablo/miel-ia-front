@@ -60,7 +60,7 @@ apiClient.interceptors.request.use((config) => {
 
 // --- Tipos y Interfaces ---
 export interface User {
-  id: number
+  id: string
   dni: string
   name: string
   email: string
@@ -79,35 +79,35 @@ export interface CreateUserRequest {
 
 export interface MedicalStudyCreate {
   access_code: string
-  doctor_id: number
-  patient_id: number
-  technician_id?: number | null
+  doctor_id: string
+  patient_id: string
+  technician_id?: string | null
   clinical_data?: string | null
 }
 
 export interface MedicalStudy {
-  id: number
+  id: string
   access_code: string
   status: "COMPLETED" | "PENDING" | string
   created_at: string
   ml_results: string | null
   clinical_data?: string | null
   patient: {
-    id: number
+    id: string
     name: string
     last_name: string
     dni: string
     email?: string
   }
   doctor?: {
-    id: number
+    id: string
     name: string
     last_name: string
     email?: string
     dni?: string
   }
   technician?: {
-    id: number
+    id: string
     name: string
     last_name: string
     email?: string
@@ -141,10 +141,7 @@ export interface UserTokenData {
   exp: number
 }
 
-// --- Funciones de la API ---
 
-// Autenticación
-// Función de login actualizada
 export const login = async (email: string, password: string, remember = false): Promise<LoginResponse> => {
   try {
     const formData = new FormData()
@@ -252,7 +249,7 @@ export const createUser = async (userData: CreateUserRequest): Promise<User> => 
   }
 }
 
-export const deleteUser = async (userId: number): Promise<void> => {
+export const deleteUser = async (userId: string): Promise<void> => {
   try {
     await apiClient.delete(`/api/v1/users/${userId}`)
   } catch (error) {
@@ -287,7 +284,7 @@ export const getUserByIdUUID = async (userId: string): Promise<User> => {
   }
 }
 
-export const getUserById = async (userId: number): Promise<User> => {
+export const getUserById = async (userId: string): Promise<User> => {
   try {
     const response = await apiClient.get<User[]>("/api/v1/users/search", {
       params: {
@@ -335,7 +332,7 @@ export const searchStudiesByPatientDni = async (dni: string, accessCode: string)
   }
 }
 
-export const getStudyById = async (studyId: number): Promise<MedicalStudy> => {
+export const getStudyById = async (studyId: string): Promise<MedicalStudy> => {
   try {
     const response = await apiClient.get<MedicalStudy>("/medical_studies/search/", {
       params: {
@@ -375,7 +372,7 @@ export const createMedicalStudy = async (studyData: MedicalStudyCreate): Promise
   }
 }
 
-export const deleteMedicalStudy = async (studyId: number): Promise<void> => {
+export const deleteMedicalStudy = async (studyId: string): Promise<void> => {
   try {
     await apiClient.delete(`/medical_studies/${studyId}`)
   } catch (error) {
@@ -384,7 +381,7 @@ export const deleteMedicalStudy = async (studyId: number): Promise<void> => {
   }
 }
 
-export const performDiagnosis = async (studyId: number, formData: FormData): Promise<any> => {
+export const performDiagnosis = async (studyId: string, formData: FormData): Promise<any> => {
   try {
     const response = await apiClient.post(`/diagnose/${studyId}`, formData, {
       headers: {

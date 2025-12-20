@@ -24,41 +24,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
-<<<<<<< HEAD
-   
-    // IDs de roles para comparación con tokens (usar UUIDs, no nombres)
-    const ADMIN_ROLE_ID = process.env.NEXT_PUBLIC_ADMIN_ROLE_ID || ""
-    const DOCTOR_ROLE_ID = process.env.NEXT_PUBLIC_DOCTOR_ROLE_ID || ""
-    const TECHNICIAN_ROLE_ID = process.env.NEXT_PUBLIC_TECHNICIAN_ROLE_ID || ""
-  
-    const handleLogin = async (e: React.FormEvent) => {
-      e.preventDefault()
-      setLoading(true)
-      setError("")
-  
-      try {
-        // 1. Realizar login con el backend
-        const { access_token } = await login(email, password)
-        
-        // 2. Decodificar el token para obtener los roles
-        const tokenData = decodeToken(access_token)
-        
-        console.log("Token data:", tokenData) // Debug
-        console.log("User roles:", tokenData.roles) // Debug
-        
-        // 3. Verificar roles usando UUIDs
-        const userRoles = tokenData.roles || []
-        
-        const hasAdminRole = userRoles.includes(ADMIN_ROLE_ID)
-        const hasDoctorRole = userRoles.includes(DOCTOR_ROLE_ID)
-        const hasTechnicianRole = userRoles.includes(TECHNICIAN_ROLE_ID)
-=======
->>>>>>> 277549d (feat(readme & password recovery): feat(auth): add password recovery flow and update documentation)
 
-  // IDs de roles para comparación con tokens (usar UUIDs, no nombres)
-  const ADMIN_ROLE_ID = process.env.NEXT_PUBLIC_ADMIN_ROLE_ID || "497c5508-6584-4c79-b903-6b7e9e02de5a"
-  const DOCTOR_ROLE_ID = process.env.NEXT_PUBLIC_DOCTOR_ROLE_ID || "ee6ded1a-3ce0-41c9-b6c8-bf9e3c3ca0bc"
-  const TECHNICIAN_ROLE_ID = process.env.NEXT_PUBLIC_TECHNICIAN_ROLE_ID || "f3c8b1d2-4e5a-4c6b-9c7d-8e9f0a1b2c3d"
+
+
+  const ADMIN_ROLE_ID = process.env.NEXT_PUBLIC_ADMIN_ROLE_ID || ""
+  const DOCTOR_ROLE_ID = process.env.NEXT_PUBLIC_DOCTOR_ROLE_ID || ""
+  const TECHNICIAN_ROLE_ID = process.env.NEXT_PUBLIC_TECHNICIAN_ROLE_ID || ""
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

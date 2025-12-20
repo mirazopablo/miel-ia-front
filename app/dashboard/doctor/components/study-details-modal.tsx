@@ -32,7 +32,7 @@ import {
   TrendingUp,
   BrainIcon,
 } from "lucide-react"
-import { deleteMedicalStudy, type MedicalStudy, type User } from "../../../lib/api"
+import { deleteMedicalStudy, getStudyById, type MedicalStudy, type User } from "../../../lib/api"
 import { toast } from "sonner"
 import { usePathname } from "next/navigation"
 
@@ -111,6 +111,16 @@ const MLResultsDisplay = ({
   patientName = "Paciente",
   studyDate = new Date().toLocaleDateString(),
 }: MLResultsDisplayProps) => {
+  if (!mlResults) {
+    return (
+      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center border border-gray-200">
+        <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-600 font-medium">Cargando resultados de ML...</p>
+        <p className="text-sm text-gray-500 mt-1">Obteniendo datos desencriptados</p>
+      </div>
+    )
+  }
+
   // Si mlResults es string, parsearlo
   let results: NewMLResults | null
   try {
@@ -165,7 +175,7 @@ const MLResultsDisplay = ({
   // ADAPTACIÓN AL NUEVO FORMATO
   const classificationLevel = results.classification_level || 0
   const severityColors = getSeverityColor(classificationLevel)
-  
+
   // Calcular confianza desde el nuevo formato
   const binaryConfidence = results.details?.binary_model_votes?.ensemble_confidence || 0
   const classifyConfidence = results.details?.classification_details?.model_votes?.ensemble_confidence || 0
@@ -189,6 +199,8 @@ const MLResultsDisplay = ({
 
   return (
     <div className="space-y-6">
+
+
       {/* Diagnóstico Principal */}
       <div className={`${severityColors.bg} ${severityColors.border} border-2 rounded-xl p-6 shadow-sm`}>
         <div className="flex items-start justify-between mb-4">
@@ -397,16 +409,16 @@ const MLResultsDisplay = ({
               )}
 
               {/* Si no hay explicaciones disponibles */}
-              {(!results.explanations.summary_insights?.clinical_insights?.length && 
-                !results.explanations.summary_insights?.most_influential_features?.length && 
+              {(!results.explanations.summary_insights?.clinical_insights?.length &&
+                !results.explanations.summary_insights?.most_influential_features?.length &&
                 !results.explanations.summary_insights?.electrode_analysis?.electrodes_with_anomalies?.length) && (
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                  <BrainIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Las explicaciones del modelo están siendo procesadas.
-                  </p>
-                </div>
-              )}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
+                    <BrainIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">
+                      Las explicaciones del modelo están siendo procesadas.
+                    </p>
+                  </div>
+                )}
 
               {/* Metadatos del Análisis */}
               {results.explanations.metadata && (
@@ -430,6 +442,7 @@ export default function StudyDetailsModal({ study, isOpen, onClose, onStudyDelet
   const [doctor, setDoctor] = useState<User | null>(null)
   const [patient, setPatient] = useState<User | null>(null)
   const [technician, setTechnician] = useState<User | null>(null)
+  const [detailedStudy, setDetailedStudy] = useState<MedicalStudy | null>(null)
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showRawResults, setShowRawResults] = useState(false)
@@ -452,21 +465,25 @@ export default function StudyDetailsModal({ study, isOpen, onClose, onStudyDelet
 
     setLoading(true)
     try {
-      // Solo usar los datos básicos que ya vienen en el estudio
-      // NO hacer llamadas adicionales al servidor por ahora
 
-      if (study.doctor) {
-        setDoctor(study.doctor as User)
-      }
+      try {
+        const fullStudy = await getStudyById(study.id)
+        setDetailedStudy(fullStudy)
+        if (fullStudy.doctor) setDoctor(fullStudy.doctor as User)
+        else if (study.doctor) setDoctor(study.doctor as User)
 
-      if (study.patient) {
-        setPatient(study.patient as User)
-      }
+        if (fullStudy.patient) setPatient(fullStudy.patient as User)
+        else if (study.patient) setPatient(study.patient as User)
 
-      if (study.technician) {
-        setTechnician(study.technician as User)
-      } else {
-        setTechnician(null)
+        if (fullStudy.technician) setTechnician(fullStudy.technician as User)
+        else if (study.technician) setTechnician(study.technician as User)
+        else setTechnician(null)
+
+      } catch (err) {
+        console.error("Error fetching full study details:", err)
+        if (study.doctor) setDoctor(study.doctor as User)
+        if (study.patient) setPatient(study.patient as User)
+        if (study.technician) setTechnician(study.technician as User)
       }
     } catch (error) {
       console.error("Error setting user data:", error)
@@ -503,15 +520,30 @@ export default function StudyDetailsModal({ study, isOpen, onClose, onStudyDelet
     setDoctor(null)
     setPatient(null)
     setTechnician(null)
+    setDetailedStudy(null)
     setShowRawResults(false)
     onClose()
   }
 
   const handleViewDetailedResults = () => {
-    if (!study?.ml_results) return
+    if (!study) return
+    if (!study.ml_results && !detailedStudy?.ml_results) return
 
     try {
-      const results = typeof study.ml_results === "string" ? JSON.parse(study.ml_results) : study.ml_results
+      let results = detailedStudy?.ml_results
+
+      if (typeof results === "string") {
+        try {
+          results = JSON.parse(results)
+        } catch (e) {
+          console.error("Error parsing detailed results:", e)
+        }
+      }
+
+      if (!results && study.ml_results) {
+        results = typeof study.ml_results === "string" ? JSON.parse(study.ml_results) : study.ml_results
+      }
+
       const jsonWindow = window.open("", "_blank")
 
       if (!jsonWindow) {
@@ -578,7 +610,6 @@ export default function StudyDetailsModal({ study, isOpen, onClose, onStudyDelet
 
   if (!study) return null
 
-  // Obtener la fecha correcta usando created_at como fallback
   const getCreationDate = () => {
     return study.created_at || (study as any).creation_date || null
   }
@@ -595,9 +626,7 @@ export default function StudyDetailsModal({ study, isOpen, onClose, onStudyDelet
         return "Fecha inválida"
       }
 
-      // Verificar si la fecha es muy antigua (timestamp 0 o cerca)
       if (date.getTime() < 946684800000) {
-        // 1 enero 2000
         return "Fecha incorrecta"
       }
 
@@ -652,7 +681,6 @@ export default function StudyDetailsModal({ study, isOpen, onClose, onStudyDelet
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Información General del Estudio */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -816,16 +844,12 @@ export default function StudyDetailsModal({ study, isOpen, onClose, onStudyDelet
               </CardContent>
             </Card>
 
-            {/* Resultados ML - MEJORADO */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Resultados del Modelo ML
                   {study.ml_results && (
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setShowRawResults(!showRawResults)}>
-                        {showRawResults ? "Ver Interpretado" : "Ver JSON"}
-                      </Button>
                       <Button size="sm" onClick={handleViewDetailedResults}>
                         <Eye className="mr-2 h-4 w-4" />
                         Abrir Detallado
@@ -836,21 +860,10 @@ export default function StudyDetailsModal({ study, isOpen, onClose, onStudyDelet
               </CardHeader>
               <CardContent>
                 {study.ml_results ? (
-                  showRawResults ? (
-                    // Vista JSON cruda
-                    <div className="bg-muted/50 p-4 rounded-lg">
-                      <pre className="whitespace-pre-wrap text-sm overflow-auto max-h-60">
-                        {JSON.stringify(
-                          typeof study.ml_results === "string" ? JSON.parse(study.ml_results) : study.ml_results,
-                          null,
-                          2,
-                        )}
-                      </pre>
-                    </div>
-                  ) : (
+                  (
                     // Vista interpretada con nuestro componente mejorado
                     <MLResultsDisplay
-                      mlResults={study.ml_results}
+                      mlResults={detailedStudy?.ml_results || null}
                       patientName={`${study.patient?.name} ${study.patient?.last_name}`}
                       studyDate={formatDate(getCreationDate())}
                     />

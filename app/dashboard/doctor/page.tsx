@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { getMedicalStudies, performDiagnosis, type MedicalStudy } from "../../lib/api"
+import { getMedicalStudies, performDiagnosis, deleteMedicalStudy, type MedicalStudy } from "../../lib/api"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import {
   FileIcon,
@@ -30,6 +40,9 @@ import {
   BrainIcon,
   Loader2Icon,
   PlusIcon,
+  Eye,
+  Trash,
+  AlertCircle,
 } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import StudyDetailsModal from "./components/study-details-modal"
@@ -42,11 +55,16 @@ export default function DoctorDashboard() {
   const [selectedStudy, setSelectedStudy] = useState<MedicalStudy | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Estados para el modal de diagnóstico
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false)
   const [diagnosisStudy, setDiagnosisStudy] = useState<MedicalStudy | null>(null)
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [diagnosing, setDiagnosing] = useState(false)
+
+  const [studyToDelete, setStudyToDelete] = useState<MedicalStudy | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const [errorModalOpen, setErrorModalOpen] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
 
   const loadData = async () => {
     setLoading(true)
@@ -95,6 +113,40 @@ export default function DoctorDashboard() {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedStudy(null)
+  }
+
+  // Funciones para eliminar
+  const handleDeleteClick = (study: MedicalStudy) => {
+    setStudyToDelete(study)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!studyToDelete) return
+
+    setDeleting(true)
+    try {
+      await deleteMedicalStudy(studyToDelete.id)
+      toast.success("Estudio médico eliminado exitosamente")
+
+      // Actualizar la lista localmente
+      setStudies(studies.filter((s) => s.id !== studyToDelete.id))
+      setStudyToDelete(null)
+    } catch (error: any) {
+      console.error("Error deleting study:", error)
+
+      // Si el error es 401, lo dejamos pasar (el interceptor o la lógica de sesión lo manejará)
+      if (error.response?.status === 401) {
+        return
+      }
+
+      // Para cualquier otro error, mostramos el modal
+      const message = error.response?.data?.detail || error.message || "Ha ocurrido un error inesperado al eliminar el estudio."
+      setErrorMessage(message)
+      setStudyToDelete(null) // Cerramos el modal de confirmación
+      setErrorModalOpen(true)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   // Funciones para el diagnóstico
@@ -185,48 +237,6 @@ export default function DoctorDashboard() {
     }
   }
 
-const getResultPreview = (study: MedicalStudy) => {
-    if (!study.ml_results) {
-      return <span className="text-muted-foreground">Procesando...</span>
-    }
-
-    try {
-      const parsed = typeof study.ml_results === 'string' ? JSON.parse(study.ml_results) : study.ml_results
-      
-      // ADAPTADO AL NUEVO FORMATO
-      const diagnosis = parsed.final_diagnosis || "Resultado disponible"
-      
-      // Calcular confianza desde el nuevo formato
-      const binaryConfidence = parsed.details?.binary_model_votes?.ensemble_confidence || 0
-      const classifyConfidence = parsed.details?.classification_details?.model_votes?.ensemble_confidence || 0
-      const overallConfidence = Math.round(((binaryConfidence + classifyConfidence) / 2) * 100)
-      
-      const classificationLevel = parsed.classification_level || 0
-
-      return (
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Badge variant={diagnosis.includes("Positivo") ? "destructive" : "default"} className="text-xs">
-              {diagnosis}
-            </Badge>
-            {classificationLevel > 0 && (
-              <Badge variant="outline" className="text-xs">
-                Nivel {classificationLevel}
-              </Badge>
-            )}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Confianza: {overallConfidence}%
-          </div>
-        </div>
-      )
-    } catch (error) {
-      // Fallback para formato anterior o datos corruptos
-      console.warn('Error parsing ML results:', error)
-      return <span className="text-sm text-muted-foreground">Resultado disponible</span>
-    }
-  }
-
   return (
     <DashboardLayout>
       <div className="p-6">
@@ -314,7 +324,6 @@ const getResultPreview = (study: MedicalStudy) => {
                         <TableHead>DNI</TableHead>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Estado</TableHead>
-                        <TableHead>Resultado</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -344,17 +353,27 @@ const getResultPreview = (study: MedicalStudy) => {
                                 {getStatusText(study.status)}
                               </Badge>
                             </TableCell>
-                            <TableCell>{getResultPreview(study)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center gap-2 justify-end">
-                                {study.status === "PENDING" && (
+                                {study.status === "PENDING" ? (
                                   <Button variant="secondary" size="sm" onClick={() => handleDiagnoseStudy(study)}>
                                     <BrainIcon className="h-4 w-4 mr-1" />
                                     Diagnosticar
                                   </Button>
+                                ) : (
+                                  <Button size="sm" onClick={() => handleViewStudy(study)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    Ver
+                                  </Button>
                                 )}
-                                <Button variant="ghost" size="sm" onClick={() => handleViewStudy(study)}>
-                                  Ver
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteClick(study)}
+                                  className="bg-red-500 hover:bg-red-600 border-red-600"
+                                >
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  Eliminar
                                 </Button>
                               </div>
                             </TableCell>
@@ -381,6 +400,39 @@ const getResultPreview = (study: MedicalStudy) => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Modal de Confirmación de Eliminación */}
+        <AlertDialog open={!!studyToDelete} onOpenChange={(open) => !open && setStudyToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Está seguro de eliminar este estudio?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. Se eliminará permanentemente el estudio del paciente{" "}
+                <strong>{studyToDelete?.patient.name} {studyToDelete?.patient.last_name}</strong>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleConfirmDelete()
+                }}
+                disabled={deleting}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  "Eliminar"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Modal de Detalles del Estudio - Sin opción de eliminar */}
         <StudyDetailsModal study={selectedStudy} isOpen={isModalOpen} onClose={handleCloseModal} />
@@ -449,6 +501,26 @@ const getResultPreview = (study: MedicalStudy) => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Modal de Error */}
+        <AlertDialog open={errorModalOpen} onOpenChange={setErrorModalOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-5 w-5" />
+                Error al Eliminar
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {errorMessage}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setErrorModalOpen(false)}>
+                Entendido
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
       </div>
     </DashboardLayout>
   )
