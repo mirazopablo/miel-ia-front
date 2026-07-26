@@ -323,6 +323,7 @@ export default function DoctorDashboard() {
                         <TableHead>Paciente</TableHead>
                         <TableHead>DNI</TableHead>
                         <TableHead>Fecha</TableHead>
+                        <TableHead>Hora</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
@@ -348,6 +349,7 @@ export default function DoctorDashboard() {
                             <TableCell>{`${study.patient.name} ${study.patient.last_name}`}</TableCell>
                             <TableCell>{study.patient.dni}</TableCell>
                             <TableCell>{getStudyDate(study)}</TableCell>
+                            <TableCell>{new Date(study.created_at).toLocaleTimeString("es-ES")}</TableCell>
                             <TableCell>
                               <Badge variant={study.status === "COMPLETED" ? "default" : "outline"}>
                                 {getStatusText(study.status)}
