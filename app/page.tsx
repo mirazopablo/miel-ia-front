@@ -88,7 +88,7 @@ export default function Home() {
               <div className="md:w-1/2">
                 <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
                   <img
-                    src="/placeholder.webp?height=400&width=600"
+                    src="/banner.png?height=400&width=600"
                     alt="Visualización de datos médicos"
                     className="w-full h-full object-cover"
                   />
