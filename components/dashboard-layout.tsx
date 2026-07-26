@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { LogoMielIA } from "./ui/logo"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -94,7 +95,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex flex-col flex-grow border-r bg-background pt-5 overflow-y-auto">
           <div className="flex items-center flex-shrink-0 px-4 mb-5">
             <Link href="/" className="text-xl font-bold">
-              Miel-IA
+              <LogoMielIA 
+                variant="mono" 
+                className="h-28 w-auto text-foreground hover:text-primary transition-colors" 
+              />
             </Link>
           </div>
           <div className="mt-5 flex-grow flex flex-col">

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Menu, X } from "lucide-react"
+import { LogoMielIA } from "./ui/logo"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -17,18 +18,22 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-32 items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-xl font-bold">Miel-IA</span>
+            {/* Usamos la versión mono para que herede el color del texto o blanco */}
+            <LogoMielIA 
+              variant="mono" 
+              className="h-28 w-auto text-foreground hover:text-primary transition-colors" 
+            />
           </Link>
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-10">
           <Link
             href="/"
-            className={`text-sm font-medium transition-colors hover:text-primary ${
+            className={`text-lg font-medium transition-colors hover:text-primary ${
               isActive("/") ? "text-primary" : "text-muted-foreground"
             }`}
           >
@@ -36,7 +41,7 @@ export default function Navbar() {
           </Link>
           <Link
             href="/studies/search"
-            className={`text-sm font-medium transition-colors hover:text-primary ${
+            className={`text-lg font-medium transition-colors hover:text-primary ${
               isActive("/studies/search") ? "text-primary" : "text-muted-foreground"
             }`}
           >
@@ -44,14 +49,14 @@ export default function Navbar() {
           </Link>
           {/* <Link
             href="/about"
-            className={`text-sm font-medium transition-colors hover:text-primary ${
+            className={`text-lg font-medium transition-colors hover:text-primary ${
               isActive("/about") ? "text-primary" : "text-muted-foreground"
             }`}
           >
             Acerca de
           </Link> */}
           <Link href="/login">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="lg">
               Acceso
             </Button>
           </Link>
@@ -73,7 +78,7 @@ export default function Navbar() {
           <div className="container flex flex-col space-y-3 py-4">
             <Link
               href="/"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-lg font-medium transition-colors hover:text-primary ${
                 isActive("/") ? "text-primary" : "text-muted-foreground"
               }`}
               onClick={() => setIsMenuOpen(false)}
@@ -82,7 +87,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/estudios/consulta"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-lg font-medium transition-colors hover:text-primary ${
                 isActive("/estudios/consulta") ? "text-primary" : "text-muted-foreground"
               }`}
               onClick={() => setIsMenuOpen(false)}
@@ -91,7 +96,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/about"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-lg font-medium transition-colors hover:text-primary ${
                 isActive("/about") ? "text-primary" : "text-muted-foreground"
               }`}
               onClick={() => setIsMenuOpen(false)}
@@ -99,7 +104,7 @@ export default function Navbar() {
               Acerca de
             </Link>
             <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="lg" className="w-full">
                 Acceso
               </Button>
             </Link>
