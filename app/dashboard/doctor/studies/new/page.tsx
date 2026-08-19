@@ -19,7 +19,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils"
 
 // Importamos las funciones y tipos desde nuestra API
-import { createMedicalStudy, getUsersByRole, type MedicalStudyCreate, type User } from "../../../../lib/api"
+import { createMedicalStudy, getUsersByRole, getRoles, type MedicalStudyCreate, type User } from "../../../../lib/api"
 import { UUID } from "crypto"
 
 // Función para generar código alfanumérico de 5 dígitos
@@ -72,36 +72,40 @@ export default function NewStudyPage() {
   useEffect(() => {
     const loadUsers = async () => {
       try {
+        // Obtenemos los roles del backend primero
+        const roles = await getRoles()
+        
+        const doctorRole = roles.find(r => r.name.toLowerCase() === 'doctor')
+        const patientRole = roles.find(r => r.name.toLowerCase() === 'patient')
+        const technicianRole = roles.find(r => r.name.toLowerCase() === 'technician')
+
         // Cargar doctores
         setLoadingDoctors(true)
-        const doctorRoleId = process.env.NEXT_PUBLIC_DOCTOR_ROLE_ID
-        if (doctorRoleId) {
-          const doctorsList = await getUsersByRole(doctorRoleId)
+        if (doctorRole) {
+          const doctorsList = await getUsersByRole(doctorRole.id)
           setDoctors(doctorsList)
         } else {
-          console.warn("NEXT_PUBLIC_DOCTOR_ROLE_ID no está definido")
+          console.warn("No se encontró el rol 'doctor' en la base de datos")
         }
         setLoadingDoctors(false)
 
         // Cargar pacientes
         setLoadingPatients(true)
-        const patientRoleId = process.env.NEXT_PUBLIC_PATIENT_ROLE_ID
-        if (patientRoleId) {
-          const patientsList = await getUsersByRole(patientRoleId)
+        if (patientRole) {
+          const patientsList = await getUsersByRole(patientRole.id)
           setPatients(patientsList)
         } else {
-          console.warn("NEXT_PUBLIC_PATIENT_ROLE_ID no está definido")
+          console.warn("No se encontró el rol 'patient' en la base de datos")
         }
         setLoadingPatients(false)
 
-        // Cargar técnicos (usando admin role por ahora)
+        // Cargar técnicos
         setLoadingTechnicians(true)
-        const technicianRoleId = process.env.NEXT_PUBLIC_TECHNICIAN_ROLE_ID
-        if (technicianRoleId) {
-          const techniciansList = await getUsersByRole(technicianRoleId)
+        if (technicianRole) {
+          const techniciansList = await getUsersByRole(technicianRole.id)
           setTechnicians(techniciansList)
         } else {
-          console.warn("NEXT_PUBLIC_TECHNICIAN_ROLE_ID no está definido")
+          console.warn("No se encontró el rol 'technician' en la base de datos")
         }
         setLoadingTechnicians(false)
       } catch (error) {

@@ -27,10 +27,6 @@ export default function LoginPage() {
 
 
 
-  const ADMIN_ROLE_ID = process.env.NEXT_PUBLIC_ADMIN_ROLE_ID || ""
-  const DOCTOR_ROLE_ID = process.env.NEXT_PUBLIC_DOCTOR_ROLE_ID || ""
-  const TECHNICIAN_ROLE_ID = process.env.NEXT_PUBLIC_TECHNICIAN_ROLE_ID || ""
-
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,15 +43,13 @@ export default function LoginPage() {
       console.log("Token data:", tokenData) // Debug
       console.log("User roles:", tokenData.roles) // Debug
 
-      // 3. Verificar roles usando UUIDs
-      const userRoles = tokenData.roles || []
+      // 3. Verificar roles por nombre (minúsculas para evitar problemas de case)
+      const userRoles = (tokenData.roles || []).map(r => String(r).toLowerCase())
 
-      const hasAdminRole = userRoles.includes(ADMIN_ROLE_ID)
-      const hasDoctorRole = userRoles.includes(DOCTOR_ROLE_ID)
-      const hasTechnicianRole = userRoles.includes(TECHNICIAN_ROLE_ID)
+      const hasAdminRole = userRoles.includes("admin")
+      const hasDoctorRole = userRoles.includes("doctor")
+      const hasTechnicianRole = userRoles.includes("technician")
 
-      console.log("Expected admin role ID:", ADMIN_ROLE_ID) // Debug
-      console.log("Expected doctor role ID:", DOCTOR_ROLE_ID) // Debug
       console.log("Has admin role:", hasAdminRole) // Debug
       console.log("Has doctor role:", hasDoctorRole) // Debug
       console.log("Has technician role:", hasTechnicianRole) // Debug
