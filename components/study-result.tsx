@@ -55,7 +55,7 @@ export default function StudyResult({ study, onBack }: StudyResultProps) {
       }
       
       try {
-        const doctor = await getUserById(study.doctorId)
+        const doctor = await getUserById(String(study.doctorId))
         setDoctorFullName(`${doctor.name} ${doctor.last_name ?? ""}`.trim())
       } catch (error) {
         // Log para ver el error completo en la consola del navegador.

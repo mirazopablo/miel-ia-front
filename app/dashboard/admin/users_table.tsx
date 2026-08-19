@@ -28,7 +28,7 @@ interface UsersTableProps {
 
 export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [deletingUserId, setDeletingUserId] = useState<number | null>(null)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
 
   const filteredUsers = users.filter(
     (user) =>
@@ -38,7 +38,7 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
       user.roles.some((role) => role.name.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
-  const handleDeleteUser = async (userId: number, userName: string) => {
+  const handleDeleteUser = async (userId: string, userName: string) => {
     try {
       setDeletingUserId(userId)
       await deleteUser(userId)

@@ -73,7 +73,7 @@ export default function TechnicianDashboard() {
   }
 
   const getStudyDate = (study: MedicalStudy) => {
-    const dateString = study.creation_date || (study as any).created_at
+    const dateString = (study as any).creation_date || study.created_at
 
     if (!dateString) {
       return "Fecha no disponible"
