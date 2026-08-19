@@ -1,8 +1,11 @@
 // api.ts - Versión corregida
 import axios from "axios"
 
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL
+const baseURL = rawBaseUrl ? rawBaseUrl.replace(/\/+$/, "") : undefined
+
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL,
 })
 
 // Función para manejar el almacenamiento seguro en el cliente
@@ -137,8 +140,13 @@ export interface LoginResponse {
 export interface UserTokenData {
   sub: string
   user_id: string
-  roles: string[]
+  roles: string[] // Array de nombres de roles (ej: "admin", "doctor")
   exp: number
+}
+
+export interface RoleResponseDTO {
+  id: string
+  name: string
 }
 
 
@@ -218,7 +226,6 @@ export const decodeToken = (token: string): UserTokenData => {
   }
 }
 
-// Usuarios
 export const getUsers = async (): Promise<User[]> => {
   try {
     const response = await apiClient.get<User[]>("/api/v1/users/")
@@ -237,13 +244,39 @@ export const getUsers = async (): Promise<User[]> => {
   }
 }
 
+export const getRoles = async (): Promise<RoleResponseDTO[]> => {
+  try {
+    const response = await apiClient.get<RoleResponseDTO[]>("/temp-roles/")
+    return response.data
+  } catch (error) {
+    console.error("Error fetching roles:", error)
+    throw new Error("Error al obtener los roles disponibles")
+  }
+}
+
 export const createUser = async (userData: CreateUserRequest): Promise<User> => {
   try {
     const response = await apiClient.post<User>("/api/v1/users/", userData)
     return response.data
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data?.message || "Error al crear usuario")
+      // 1. Intentar obtener el 'message' personalizado (nuevo formato del backend)
+      const customMessage = error.response?.data?.message
+      if (customMessage) {
+        throw new Error(customMessage)
+      }
+
+      // 2. Intentar parsear el 'detail' estándar de Pydantic por si no hay message
+      const detail = error.response?.data?.detail
+      if (typeof detail === 'string') {
+        throw new Error(detail)
+      } else if (Array.isArray(detail)) {
+        // Concatenar los errores de los distintos campos
+        const messages = detail.map(d => `${d.loc.join('.')}: ${d.msg}`).join(' | ')
+        throw new Error(messages)
+      }
+
+      throw new Error("Error al crear usuario")
     }
     throw new Error("Error desconocido al crear usuario")
   }
@@ -326,7 +359,6 @@ export const searchStudiesByPatientDni = async (dni: string, accessCode: string)
     })
     return response.data
   } catch (error) {
-    console.log("Error searching studies by patient DNI:", error)
     console.error("Error searching studies:", error)
     throw error
   }

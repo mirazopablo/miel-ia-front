@@ -1,23 +1,22 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
-import type { CreateUserRequest } from "../../lib/api"
+import { AlertCircle, Shield, Stethoscope, UserIcon, Activity } from "lucide-react"
+import { CreateUserRequest, getRoles, RoleResponseDTO } from "../../lib/api"
+import { Card, CardContent } from "@/components/ui/card"
 
 interface CreateUserModalProps {
   isOpen: boolean
@@ -25,25 +24,14 @@ interface CreateUserModalProps {
   onCreateUser: (userData: CreateUserRequest) => Promise<void>
 }
 
-// Roles predefinidos con sus UUIDs desde variables de entorno
-const ROLES = {
-  ADMIN: {
-    label: "Administrador",
-    value: process.env.NEXT_PUBLIC_ADMIN_ROLE_ID || "497c5508-6584-4c79-b903-6b7e9e02de5a",
-  },
-  DOCTOR: {
-    label: "Médico",
-    value: process.env.NEXT_PUBLIC_DOCTOR_ROLE_ID || "ee6ded1a-3ce0-41c9-b6c8-bf9e3c3ca0bc",
-  },
-  PATIENT: {
-    label: "Paciente",
-    value: process.env.NEXT_PUBLIC_PATIENT_ROLE_ID || "8e4a6d51-74eb-4cb5-8992-c15b56020d12",
-  },
-  TECHNICIAN: {
-    label: "Técnico",
-    value: process.env.NEXT_PUBLIC_TECHNICIAN_ROLE_ID || "2b9101a8-2a22-4891-aa18-a567b3df1568",
-  },
+// Mapeo amigable para los roles en español
+const ROLE_UI_MAP: Record<string, { label: string, icon: React.ReactNode, description: string }> = {
+  admin: { label: "Administrador", icon: <Shield className="h-6 w-6 mb-2" />, description: "Acceso total al sistema" },
+  doctor: { label: "Médico", icon: <Stethoscope className="h-6 w-6 mb-2" />, description: "Gestión de diagnósticos y pacientes" },
+  patient: { label: "Paciente", icon: <UserIcon className="h-6 w-6 mb-2" />, description: "Acceso a sus propios estudios" },
+  technician: { label: "Técnico", icon: <Activity className="h-6 w-6 mb-2" />, description: "Carga de estudios médicos" },
 }
+
 export default function CreateUserModal({ isOpen, onClose, onCreateUser }: CreateUserModalProps) {
   const [formData, setFormData] = useState<CreateUserRequest>({
     name: "",
@@ -55,23 +43,40 @@ export default function CreateUserModal({ isOpen, onClose, onCreateUser }: Creat
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [roles, setRoles] = useState<RoleResponseDTO[]>([])
+  const [rolesLoading, setRolesLoading] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      loadRoles()
+    }
+  }, [isOpen])
+
+  const loadRoles = async () => {
+    try {
+      setRolesLoading(true)
+      const data = await getRoles()
+      setRoles(data)
+    } catch (err) {
+      console.error("Error cargando roles", err)
+      setError("No se pudieron cargar los roles disponibles.")
+    } finally {
+      setRolesLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.role_id) {
+      setError("Debe seleccionar un rol para el usuario.")
+      return
+    }
     setLoading(true)
     setError("")
 
     try {
       await onCreateUser(formData)
-      // Resetear formulario
-      setFormData({
-        name: "",
-        email: "",
-        password: "",
-        dni: "",
-        last_name: "",
-        role_id: "",
-      })
+      handleClose()
     } catch (err: any) {
       setError(err.message || "Error al crear usuario")
     } finally {
@@ -93,121 +98,129 @@ export default function CreateUserModal({ isOpen, onClose, onCreateUser }: Creat
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Crear Nuevo Usuario</DialogTitle>
-          <DialogDescription>Complete los datos para crear un nuevo usuario en el sistema.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <SheetContent className="sm:max-w-xl overflow-y-auto">
+        <SheetHeader className="mb-6">
+          <SheetTitle>Crear Nuevo Usuario</SheetTitle>
+          <SheetDescription>Complete los datos para crear un nuevo usuario en el sistema.</SheetDescription>
+        </SheetHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nombre *
-              </Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="col-span-3"
                 required
+                minLength={3}
+                maxLength={50}
+                pattern="^[a-zA-Z0-9 ]+$"
+                title="El nombre debe contener solo letras, números y espacios"
               />
             </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="last_name" className="text-right">
-                Apellido *
-              </Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="last_name">Apellido *</Label>
               <Input
                 id="last_name"
                 value={formData.last_name}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                className="col-span-3"
                 required
+                maxLength={100}
               />
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dni" className="text-right">
-                DNI *
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="dni">DNI *</Label>
               <Input
                 id="dni"
                 value={formData.dni}
                 onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                className="col-span-3"
                 required
+                minLength={8}
+                maxLength={20}
               />
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email *
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="col-span-3"
                 required
               />
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Contraseña *
-              </Label>
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="password">Contraseña *</Label>
               <Input
                 id="password"
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="col-span-3"
                 required
+                minLength={8}
+                maxLength={100}
+                title="La contraseña debe tener al menos 8 caracteres"
               />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">
-                Rol *
-              </Label>
-              <Select
-                value={formData.role_id}
-                onValueChange={(value) => setFormData({ ...formData, role_id: value })}
-                required
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Seleccionar rol" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ROLES).map(([key, role]) => (
-                    <SelectItem key={key} value={role.value || ''}>
-                      {role.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
-          <DialogFooter>
+          <div className="space-y-3">
+            <Label>Seleccionar Rol *</Label>
+            {rolesLoading ? (
+              <div className="text-sm text-muted-foreground animate-pulse">Cargando roles...</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {roles.map((role) => {
+                  const normalizedName = role.name.toLowerCase()
+                  const uiData = ROLE_UI_MAP[normalizedName] || { 
+                    label: role.name, 
+                    icon: <UserIcon className="h-6 w-6 mb-2" />, 
+                    description: "Rol del sistema"
+                  }
+                  
+                  return (
+                    <Card 
+                      key={role.id}
+                      className={`cursor-pointer transition-all hover:border-primary/50 ${formData.role_id === role.id ? 'border-primary ring-1 ring-primary bg-primary/5' : 'border-border'}`}
+                      onClick={() => setFormData({ ...formData, role_id: role.id })}
+                    >
+                      <CardContent className="p-4 flex flex-col items-center text-center">
+                        <div className={formData.role_id === role.id ? 'text-primary' : 'text-muted-foreground'}>
+                          {uiData.icon}
+                        </div>
+                        <div className="font-semibold text-sm">{uiData.label}</div>
+                        <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{uiData.description}</div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <SheetFooter className="mt-8">
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || rolesLoading}>
               {loading ? "Creando..." : "Crear Usuario"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
